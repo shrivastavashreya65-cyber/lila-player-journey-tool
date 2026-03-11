@@ -8,10 +8,9 @@ import plotly.express as px
 st.set_page_config(layout="wide")
 
 st.title("LILA BLACK Player Journey Visualization Tool")
-st.write("Explore player movement, combat events, and heatmaps on the map.")
 
 # -----------------------------
-# MAP CONFIGURATION
+# MAP CONFIG
 # -----------------------------
 
 MAP_CONFIG = {
@@ -27,7 +26,7 @@ MAP_IMAGES = {
 }
 
 # -----------------------------
-# WORLD → MINIMAP CONVERSION
+# WORLD → MINIMAP COORDS
 # -----------------------------
 
 def world_to_minimap(x, z, map_id):
@@ -80,6 +79,7 @@ def load_data(folder):
 
 data = load_data("player_data")
 
+
 # -----------------------------
 # MAP SELECTOR
 # -----------------------------
@@ -91,17 +91,11 @@ map_choice = st.selectbox(
 
 img = Image.open(MAP_IMAGES[map_choice])
 
-st.image(img, caption=f"{map_choice} Minimap", use_container_width=True)
-
 # -----------------------------
-# FILTER BY MAP
+# FILTER DATA
 # -----------------------------
 
 filtered = data[data["map_id"] == map_choice]
-
-# -----------------------------
-# MATCH FILTER
-# -----------------------------
 
 match_choice = st.selectbox(
     "Select Match",
@@ -110,14 +104,16 @@ match_choice = st.selectbox(
 
 filtered = filtered[filtered["match_id"] == match_choice]
 
+
 # -----------------------------
 # HUMAN VS BOT
 # -----------------------------
 
 filtered["is_bot"] = filtered["user_id"].astype(str).str.isnumeric()
 
+
 # -----------------------------
-# TIMELINE SLIDER
+# TIMELINE
 # -----------------------------
 
 filtered["time_seconds"] = filtered["ts"].astype("int64") // 1_000_000_000
@@ -133,6 +129,7 @@ time_value = st.slider(
 
 filtered = filtered[filtered["time_seconds"] <= time_value]
 
+
 # -----------------------------
 # COORDINATE CONVERSION
 # -----------------------------
@@ -144,6 +141,7 @@ coords = filtered.apply(
 
 filtered["px"] = coords.apply(lambda c: c[0])
 filtered["py"] = coords.apply(lambda c: c[1])
+
 
 # -----------------------------
 # EVENT COLORS
@@ -160,11 +158,13 @@ event_colors = {
     "KilledByStorm": "black"
 }
 
+
 # -----------------------------
 # HEATMAP TOGGLE
 # -----------------------------
 
 show_heatmap = st.checkbox("Show Kill Heatmap")
+
 
 # -----------------------------
 # VISUALIZATION
@@ -195,6 +195,30 @@ else:
         hover_data=["user_id","event","ts"]
     )
 
+
+# -----------------------------
+# MAP OVERLAY
+# -----------------------------
+
 fig.update_yaxes(autorange="reversed")
+
+fig.add_layout_image(
+    dict(
+        source=img,
+        xref="x",
+        yref="y",
+        x=0,
+        y=1024,
+        sizex=1024,
+        sizey=1024,
+        sizing="stretch",
+        layer="below"
+    )
+)
+
+fig.update_layout(
+    xaxis=dict(range=[0,1024]),
+    yaxis=dict(range=[1024,0])
+)
 
 st.plotly_chart(fig, use_container_width=True)
