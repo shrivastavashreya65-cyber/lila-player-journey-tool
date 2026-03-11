@@ -10,28 +10,9 @@ st.set_page_config(layout="wide")
 st.title("LILA BLACK Player Journey Visualization Tool")
 st.write("Explore player movement, combat events, and heatmaps on the map.")
 
-# -------------------------
-# MAP SELECTION
-# -------------------------
-
-map_choice = st.selectbox(
-    "Select Map",
-    ["AmbroseValley", "GrandRift", "Lockdown"]
-)
-
-map_images = {
-    "AmbroseValley": "minimaps/AmbroseValley_Minimap.png",
-    "GrandRift": "minimaps/GrandRift_Minimap.png",
-    "Lockdown": "minimaps/Lockdown_Minimap.jpg"
-}
-
-img = Image.open(map_images[map_choice])
-
-st.image(img, caption=f"{map_choice} Minimap", use_container_width=True)
-
-# -------------------------
+# -----------------------------
 # MAP CONFIGURATION
-# -------------------------
+# -----------------------------
 
 MAP_CONFIG = {
     "AmbroseValley": {"scale": 900, "origin_x": -370, "origin_z": -473},
@@ -39,9 +20,15 @@ MAP_CONFIG = {
     "Lockdown": {"scale": 1000, "origin_x": -500, "origin_z": -500}
 }
 
-# -------------------------
-# WORLD → MINIMAP FUNCTION
-# -------------------------
+MAP_IMAGES = {
+    "AmbroseValley": "minimaps/AmbroseValley_Minimap.png",
+    "GrandRift": "minimaps/GrandRift_Minimap.png",
+    "Lockdown": "minimaps/Lockdown_Minimap.jpg"
+}
+
+# -----------------------------
+# WORLD → MINIMAP CONVERSION
+# -----------------------------
 
 def world_to_minimap(x, z, map_id):
 
@@ -56,9 +43,9 @@ def world_to_minimap(x, z, map_id):
     return px, py
 
 
-# -------------------------
+# -----------------------------
 # LOAD DATA
-# -------------------------
+# -----------------------------
 
 @st.cache_data
 def load_data(folder):
@@ -66,6 +53,7 @@ def load_data(folder):
     frames = []
 
     for root, dirs, files in os.walk(folder):
+
         for f in files:
 
             if f.endswith(".nakama-0"):
@@ -75,6 +63,7 @@ def load_data(folder):
                 try:
                     table = pq.read_table(path)
                     df = table.to_pandas()
+
                     frames.append(df)
 
                 except:
@@ -91,15 +80,28 @@ def load_data(folder):
 
 data = load_data("player_data")
 
-# -------------------------
+# -----------------------------
+# MAP SELECTOR
+# -----------------------------
+
+map_choice = st.selectbox(
+    "Select Map",
+    ["AmbroseValley", "GrandRift", "Lockdown"]
+)
+
+img = Image.open(MAP_IMAGES[map_choice])
+
+st.image(img, caption=f"{map_choice} Minimap", use_container_width=True)
+
+# -----------------------------
 # FILTER BY MAP
-# -------------------------
+# -----------------------------
 
 filtered = data[data["map_id"] == map_choice]
 
-# -------------------------
-# MATCH SELECTOR
-# -------------------------
+# -----------------------------
+# MATCH FILTER
+# -----------------------------
 
 match_choice = st.selectbox(
     "Select Match",
@@ -108,15 +110,15 @@ match_choice = st.selectbox(
 
 filtered = filtered[filtered["match_id"] == match_choice]
 
-# -------------------------
+# -----------------------------
 # HUMAN VS BOT
-# -------------------------
+# -----------------------------
 
 filtered["is_bot"] = filtered["user_id"].astype(str).str.isnumeric()
 
-# -------------------------
+# -----------------------------
 # TIMELINE SLIDER
-# -------------------------
+# -----------------------------
 
 filtered["time_seconds"] = filtered["ts"].astype("int64") // 1_000_000_000
 
@@ -131,9 +133,9 @@ time_value = st.slider(
 
 filtered = filtered[filtered["time_seconds"] <= time_value]
 
-# -------------------------
+# -----------------------------
 # COORDINATE CONVERSION
-# -------------------------
+# -----------------------------
 
 coords = filtered.apply(
     lambda r: world_to_minimap(r["x"], r["z"], r["map_id"]),
@@ -143,21 +145,36 @@ coords = filtered.apply(
 filtered["px"] = coords.apply(lambda c: c[0])
 filtered["py"] = coords.apply(lambda c: c[1])
 
-# -------------------------
+# -----------------------------
+# EVENT COLORS
+# -----------------------------
+
+event_colors = {
+    "Position": "lightblue",
+    "BotPosition": "orange",
+    "Kill": "red",
+    "Killed": "darkred",
+    "BotKill": "purple",
+    "BotKilled": "pink",
+    "Loot": "green",
+    "KilledByStorm": "black"
+}
+
+# -----------------------------
 # HEATMAP TOGGLE
-# -------------------------
+# -----------------------------
 
 show_heatmap = st.checkbox("Show Kill Heatmap")
 
-# -------------------------
+# -----------------------------
 # VISUALIZATION
-# -------------------------
+# -----------------------------
 
 if show_heatmap:
 
     kill_events = filtered[
-    filtered["event"].isin(["Position","BotPosition"])
-]
+        filtered["event"].isin(["Kill","Killed","BotKill","BotKilled"])
+    ]
 
     fig = px.density_heatmap(
         kill_events,
@@ -173,12 +190,9 @@ else:
         filtered,
         x="px",
         y="py",
-        color="is_bot",
-        hover_data=["user_id","event","ts"],
-        color_discrete_map={
-            True: "orange",
-            False: "blue"
-        }
+        color="event",
+        color_discrete_map=event_colors,
+        hover_data=["user_id","event","ts"]
     )
 
 fig.update_yaxes(autorange="reversed")
