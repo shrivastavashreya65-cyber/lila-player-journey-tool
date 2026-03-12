@@ -1,61 +1,59 @@
-Gameplay Insights
+**Gameplay Insights**
 
-Insight 1 — Combat Hotspots
+**Insight 1 — Combat Hotspots**
 
-Observation
+_Observation_
 Kill heatmaps show that combat tends to cluster around central map areas, particularly on Ambrose Valley.
 
-Evidence
+_Evidence_
 High-density kill markers appear near central POIs.
 
-Impact
+_Impact_
 This indicates strong player convergence around loot-rich locations.
 
-Actionable Recommendation
+_Actionable Recommendation_
 Distribute loot more evenly across the map to reduce early clustering and create more diverse player paths.
 
-Metrics Affected
-
+_Metrics Affected_
 Player engagement
 Early-game survival rate
 Combat distribution
 
 
-Insight 2 — Storm Death Patterns
+**Insight 2 — Storm Death Patterns**
 
-Observation
+_Observation_
 Storm deaths often occur near map edges where players delay movement.
 
-Evidence
+_Evidence_
 Purple markers show storm deaths clustered along outer zones.
 
-Impact
+_Impact_
 Players may underestimate storm speed or delay extraction.
 
-Actionable Recommendation
+_Actionable Recommendation_
 Improve storm warnings or adjust storm timing.
 
-Metrics Affected
-
+_Metrics Affected_
 Storm death rate
 Match pacing
 
 
-Insight 3 — Bot vs Human Behavior
+**Insight 3 — Bot vs Human Behavior**
 
-Observation
+_Observation_
 Bots tend to move in simpler, more predictable paths compared to human players.
 
-Evidence
+_Evidence_
 Bot paths appear shorter and less varied on the minimap.
 
-Impact
+_Impact_
 Bots may be easier to detect and defeat.
 
-Actionable Recommendation
+_Actionable Recommendation_
 Increase bot path variability to simulate more human-like behavior.
 
-Metrics Affected
-
+_Metrics Affected_
 Bot kill ratio
 Player challenge level
+
