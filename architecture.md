@@ -1,16 +1,16 @@
 **Architecture Overview**
 
-**Tech                                 Stack**
+**Tech                     &            Stack**
 
-Layer	                                 Technology
+Layer	                     -            Technology
 
-Frontend	                             Streamlit
+Frontend	                -             Streamlit
 
-Data Processing	                       Pandas + PyArrow
+Data Processing	          -             Pandas + PyArrow
 
-Visualization	                         Plotly
+Visualization	             -            Plotly
 
-Deployment	                           Streamlit Cloud
+Deployment	                -           Streamlit Cloud
 
 
 **Data Pipeline**
@@ -60,13 +60,13 @@ Designers can toggle these layers to focus on specific gameplay patterns.
 
 **Tradeoffs**
 
-**Decision                                Reason**
+**Decision                &                Reason**
 
-Streamlit instead of React	              Faster development and deployment
+Streamlit instead of React - Faster development and deployment
 
-Plotly for visualization	                Interactive and easy integration
+Plotly for visualization	      -          Interactive and easy integration
 
-Local parquet processing	                Dataset size small enough
+Local parquet processing	        -        Dataset size small enough
 
 
 **Future Improvements**
@@ -78,5 +78,6 @@ Multi-player match reconstruction
 Map area usage analytics
 
 Storm path visualization
+
 
 
