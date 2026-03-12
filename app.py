@@ -2,39 +2,164 @@ import streamlit as st
 import pandas as pd
 import pyarrow.parquet as pq
 import os
-from PIL import Image
+import plotly.graph_objects as go
 import plotly.express as px
+from PIL import Image
 
 st.set_page_config(layout="wide")
 
-st.title("LILA BLACK Player Journey Visualization Tool")
+st.title("LILA Player Journey Visualization Tool")
+
+DATA_PATH = "player_data"
 
 # -----------------------------
 # MAP CONFIG
 # -----------------------------
 
 MAP_CONFIG = {
-    "AmbroseValley": {"scale": 900, "origin_x": -370, "origin_z": -473},
-    "GrandRift": {"scale": 581, "origin_x": -290, "origin_z": -290},
-    "Lockdown": {"scale": 1000, "origin_x": -500, "origin_z": -500}
-}
-
-MAP_IMAGES = {
-    "AmbroseValley": "minimaps/AmbroseValley_Minimap.png",
-    "GrandRift": "minimaps/GrandRift_Minimap.png",
-    "Lockdown": "minimaps/Lockdown_Minimap.jpg"
+    "AmbroseValley": {
+        "scale": 900,
+        "origin_x": -370,
+        "origin_z": -473,
+        "image": "player_data/minimaps/AmbroseValley_Minimap.png"
+    },
+    "GrandRift": {
+        "scale": 581,
+        "origin_x": -290,
+        "origin_z": -290,
+        "image": "player_data/minimaps/GrandRift_Minimap.png"
+    },
+    "Lockdown": {
+        "scale": 1000,
+        "origin_x": -500,
+        "origin_z": -500,
+        "image": "player_data/minimaps/Lockdown_Minimap.jpg"
+    }
 }
 
 # -----------------------------
-# WORLD → MINIMAP COORDS
+# LOAD DATA
 # -----------------------------
 
-def world_to_minimap(x, z, map_id):
+@st.cache_data
+def load_data():
 
-    cfg = MAP_CONFIG[map_id]
+    frames = []
 
-    u = (x - cfg["origin_x"]) / cfg["scale"]
-    v = (z - cfg["origin_z"]) / cfg["scale"]
+    for folder in os.listdir(DATA_PATH):
+
+        if "February" not in folder:
+            continue
+
+        folder_path = os.path.join(DATA_PATH, folder)
+
+        for file in os.listdir(folder_path):
+
+            filepath = os.path.join(folder_path, file)
+
+            try:
+                table = pq.read_table(filepath)
+                df = table.to_pandas()
+                df["date"] = folder
+                frames.append(df)
+
+            except:
+                continue
+
+    df = pd.concat(frames, ignore_index=True)
+
+    df["event"] = df["event"].apply(
+        lambda x: x.decode("utf-8") if isinstance(x, bytes) else x
+    )
+
+    return df
+
+
+df = load_data()
+
+st.success(f"Loaded {len(df)} rows")
+
+# -----------------------------
+# SIDEBAR FILTERS
+# -----------------------------
+
+st.sidebar.header("Filters")
+
+date = st.sidebar.selectbox(
+    "Select Date",
+    sorted(df["date"].unique())
+)
+
+date_df = df[df["date"] == date]
+
+map_selected = st.sidebar.selectbox(
+    "Select Map",
+    sorted(date_df["map_id"].unique())
+)
+
+map_df = date_df[date_df["map_id"] == map_selected]
+
+match_id = st.sidebar.selectbox(
+    "Select Match",
+    sorted(map_df["match_id"].unique())
+)
+
+match_df = map_df[map_df["match_id"] == match_id].copy()
+match_df = match_df.sort_values("ts")
+
+# -----------------------------
+# VISUALIZATION TOGGLES
+# -----------------------------
+
+st.sidebar.header("Visualization Layers")
+
+show_paths = st.sidebar.checkbox("Player Paths", True)
+show_kills = st.sidebar.checkbox("Kills", True)
+show_deaths = st.sidebar.checkbox("Deaths", True)
+show_loot = st.sidebar.checkbox("Loot", True)
+show_storm = st.sidebar.checkbox("Storm Deaths", True)
+
+# -----------------------------
+# TIMELINE
+# -----------------------------
+
+match_df["ts_seconds"] = match_df["ts"].astype("int64") // 10**9
+
+start_time = match_df["ts_seconds"].min()
+
+match_df["match_time"] = match_df["ts_seconds"] - start_time
+
+min_ts = int(match_df["match_time"].min())
+max_ts = int(match_df["match_time"].max())
+
+if min_ts == max_ts:
+    time_selected = max_ts
+else:
+    time_selected = st.slider(
+        "Match Time (seconds)",
+        min_ts,
+        max_ts,
+        max_ts
+    )
+
+timeline_df = match_df[
+    match_df["match_time"] <= time_selected
+]
+
+# -----------------------------
+# MAP COORDINATE CONVERSION
+# -----------------------------
+
+config = MAP_CONFIG[map_selected]
+
+scale = config["scale"]
+origin_x = config["origin_x"]
+origin_z = config["origin_z"]
+
+def world_to_map(x, z):
+
+    u = (x - origin_x) / scale
+    v = (z - origin_z) / scale
 
     px = u * 1024
     py = (1 - v) * 1024
@@ -42,183 +167,179 @@ def world_to_minimap(x, z, map_id):
     return px, py
 
 
-# -----------------------------
-# LOAD DATA
-# -----------------------------
-
-@st.cache_data
-def load_data(folder):
-
-    frames = []
-
-    for root, dirs, files in os.walk(folder):
-
-        for f in files:
-
-            if f.endswith(".nakama-0"):
-
-                path = os.path.join(root, f)
-
-                try:
-                    table = pq.read_table(path)
-                    df = table.to_pandas()
-
-                    frames.append(df)
-
-                except:
-                    continue
-
-    data = pd.concat(frames, ignore_index=True)
-
-    data["event"] = data["event"].apply(
-        lambda x: x.decode("utf-8") if isinstance(x, bytes) else x
-    )
-
-    return data
-
-
-data = load_data("player_data")
-
-
-# -----------------------------
-# MAP SELECTOR
-# -----------------------------
-
-map_choice = st.selectbox(
-    "Select Map",
-    ["AmbroseValley", "GrandRift", "Lockdown"]
-)
-
-img = Image.open(MAP_IMAGES[map_choice])
-
-# -----------------------------
-# FILTER DATA
-# -----------------------------
-
-filtered = data[data["map_id"] == map_choice]
-
-match_choice = st.selectbox(
-    "Select Match",
-    filtered["match_id"].unique()
-)
-
-filtered = filtered[filtered["match_id"] == match_choice]
-
-
-# -----------------------------
-# HUMAN VS BOT
-# -----------------------------
-
-filtered["is_bot"] = filtered["user_id"].astype(str).str.isnumeric()
-
-
-# -----------------------------
-# TIMELINE
-# -----------------------------
-
-filtered["time_seconds"] = filtered["ts"].astype("int64") // 1_000_000_000
-
-max_time = int(filtered["time_seconds"].max())
-
-time_value = st.slider(
-    "Match Timeline",
-    0,
-    max_time,
-    max_time
-)
-
-filtered = filtered[filtered["time_seconds"] <= time_value]
-
-
-# -----------------------------
-# COORDINATE CONVERSION
-# -----------------------------
-
-coords = filtered.apply(
-    lambda r: world_to_minimap(r["x"], r["z"], r["map_id"]),
+coords = timeline_df.apply(
+    lambda r: world_to_map(r["x"], r["z"]),
     axis=1
 )
 
-filtered["px"] = coords.apply(lambda c: c[0])
-filtered["py"] = coords.apply(lambda c: c[1])
-
-
-# -----------------------------
-# EVENT COLORS
-# -----------------------------
-
-event_colors = {
-    "Position": "lightblue",
-    "BotPosition": "orange",
-    "Kill": "red",
-    "Killed": "darkred",
-    "BotKill": "purple",
-    "BotKilled": "pink",
-    "Loot": "green",
-    "KilledByStorm": "black"
-}
-
+timeline_df["px"] = [c[0] for c in coords]
+timeline_df["py"] = [c[1] for c in coords]
 
 # -----------------------------
-# HEATMAP TOGGLE
+# EVENT GROUPS
 # -----------------------------
 
-show_heatmap = st.checkbox("Show Kill Heatmap")
+movement = timeline_df[
+    timeline_df["event"].isin(["Position", "BotPosition"])
+]
 
+kills = timeline_df[
+    timeline_df["event"].isin(["Kill", "BotKill"])
+]
 
-# -----------------------------
-# VISUALIZATION
-# -----------------------------
+deaths = timeline_df[
+    timeline_df["event"].isin(["Killed", "BotKilled"])
+]
 
-if show_heatmap:
+storm = timeline_df[
+    timeline_df["event"] == "KilledByStorm"
+]
 
-    kill_events = filtered[
-        filtered["event"].isin(["Kill","Killed","BotKill","BotKilled"])
-    ]
-
-    fig = px.density_heatmap(
-        kill_events,
-        x="px",
-        y="py",
-        nbinsx=50,
-        nbinsy=50
-    )
-
-else:
-
-    fig = px.scatter(
-        filtered,
-        x="px",
-        y="py",
-        color="event",
-        color_discrete_map=event_colors,
-        hover_data=["user_id","event","ts"]
-    )
-
+loot = timeline_df[
+    timeline_df["event"] == "Loot"
+]
 
 # -----------------------------
-# MAP OVERLAY
+# MATCH SUMMARY
 # -----------------------------
 
-fig.update_yaxes(autorange="reversed")
+st.subheader("Match Summary")
+
+col1, col2, col3, col4 = st.columns(4)
+
+col1.metric("Players", match_df["user_id"].nunique())
+col2.metric("Kills", len(kills))
+col3.metric("Deaths", len(deaths))
+col4.metric("Loot", len(loot))
+
+# -----------------------------
+# MAP VISUALIZATION
+# -----------------------------
+
+st.subheader("Player Movement")
+
+fig = go.Figure()
+
+img = Image.open(config["image"])
 
 fig.add_layout_image(
     dict(
         source=img,
-        xref="x",
-        yref="y",
         x=0,
-        y=1024,
+        y=0,
         sizex=1024,
         sizey=1024,
-        sizing="stretch",
+        xref="x",
+        yref="y",
         layer="below"
     )
 )
 
+# PLAYER PATHS
+
+if show_paths:
+
+    for player, group in movement.groupby("user_id"):
+
+        player_type = "Bot" if str(player).isdigit() else "Human"
+
+        color = "orange" if player_type == "Bot" else "red"
+        width = 1 if player_type == "Bot" else 3
+
+        fig.add_trace(
+            go.Scatter(
+                x=group["px"],
+                y=group["py"],
+                mode="lines",
+                line=dict(color=color, width=width),
+                name=player_type
+            )
+        )
+
+# EVENT MARKERS
+
+if show_kills:
+
+    fig.add_trace(go.Scatter(
+        x=kills["px"],
+        y=kills["py"],
+        mode="markers",
+        marker=dict(size=10, color="green"),
+        name="Kills"
+    ))
+
+if show_deaths:
+
+    fig.add_trace(go.Scatter(
+        x=deaths["px"],
+        y=deaths["py"],
+        mode="markers",
+        marker=dict(size=10, color="black"),
+        name="Deaths"
+    ))
+
+if show_storm:
+
+    fig.add_trace(go.Scatter(
+        x=storm["px"],
+        y=storm["py"],
+        mode="markers",
+        marker=dict(size=12, color="purple", symbol="triangle-up"),
+        name="Storm Deaths"
+    ))
+
+if show_loot:
+
+    fig.add_trace(go.Scatter(
+        x=loot["px"],
+        y=loot["py"],
+        mode="markers",
+        marker=dict(size=6, color="yellow"),
+        name="Loot"
+    ))
+
 fig.update_layout(
-    xaxis=dict(range=[0,1024]),
-    yaxis=dict(range=[1024,0])
+    width=900,
+    height=900,
+    yaxis=dict(scaleanchor="x", autorange="reversed")
 )
 
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, use_container_width=True, key="map_plot")
+
+# -----------------------------
+# HEATMAPS
+# -----------------------------
+
+st.subheader("Kill Heatmap")
+
+if len(kills) > 0:
+
+    kill_heatmap = px.density_heatmap(
+        kills,
+        x="px",
+        y="py",
+        nbinsx=40,
+        nbinsy=40
+    )
+
+    st.plotly_chart(kill_heatmap, use_container_width=True, key="kill_heatmap")
+
+else:
+    st.write("No kill events in this match.")
+
+st.subheader("Death Heatmap")
+
+if len(deaths) > 0:
+
+    death_heatmap = px.density_heatmap(
+        deaths,
+        x="px",
+        y="py",
+        nbinsx=40,
+        nbinsy=40
+    )
+
+    st.plotly_chart(death_heatmap, use_container_width=True, key="death_heatmap")
+
+else:
+    st.write("No death events in this match.")
