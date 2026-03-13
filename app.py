@@ -60,7 +60,9 @@ def load_data():
             try:
                 table = pq.read_table(filepath)
                 df = table.to_pandas()
+
                 df["date"] = folder
+
                 frames.append(df)
 
             except:
@@ -68,8 +70,14 @@ def load_data():
 
     df = pd.concat(frames, ignore_index=True)
 
+    # decode event
     df["event"] = df["event"].apply(
         lambda x: x.decode("utf-8") if isinstance(x, bytes) else x
+    )
+
+    # classify bots vs humans
+    df["player_type"] = df["user_id"].apply(
+        lambda x: "Bot" if str(x).isdigit() else "Human"
     )
 
     return df
@@ -105,6 +113,7 @@ match_id = st.sidebar.selectbox(
 )
 
 match_df = map_df[map_df["match_id"] == match_id].copy()
+
 match_df = match_df.sort_values("ts")
 
 # -----------------------------
@@ -235,16 +244,20 @@ fig.add_layout_image(
     )
 )
 
-# PLAYER PATHS
+# PLAYER PATHS WITH BOT DIFFERENTIATION
 
 if show_paths:
 
     for player, group in movement.groupby("user_id"):
 
-        player_type = "Bot" if str(player).isdigit() else "Human"
+        player_type = group["player_type"].iloc[0]
 
-        color = "orange" if player_type == "Bot" else "red"
-        width = 1 if player_type == "Bot" else 3
+        if player_type == "Human":
+            color = "blue"
+            width = 3
+        else:
+            color = "orange"
+            width = 1
 
         fig.add_trace(
             go.Scatter(
@@ -259,17 +272,15 @@ if show_paths:
 # EVENT MARKERS
 
 if show_kills:
-
     fig.add_trace(go.Scatter(
         x=kills["px"],
         y=kills["py"],
         mode="markers",
-        marker=dict(size=10, color="green"),
+        marker=dict(size=10, color="red"),
         name="Kills"
     ))
 
 if show_deaths:
-
     fig.add_trace(go.Scatter(
         x=deaths["px"],
         y=deaths["py"],
@@ -279,7 +290,6 @@ if show_deaths:
     ))
 
 if show_storm:
-
     fig.add_trace(go.Scatter(
         x=storm["px"],
         y=storm["py"],
@@ -289,7 +299,6 @@ if show_storm:
     ))
 
 if show_loot:
-
     fig.add_trace(go.Scatter(
         x=loot["px"],
         y=loot["py"],
@@ -301,7 +310,8 @@ if show_loot:
 fig.update_layout(
     width=900,
     height=900,
-    yaxis=dict(scaleanchor="x", autorange="reversed")
+    xaxis=dict(showgrid=False, visible=False),
+    yaxis=dict(showgrid=False, visible=False, scaleanchor="x", autorange="reversed")
 )
 
 st.plotly_chart(fig, use_container_width=True, key="map_plot")
