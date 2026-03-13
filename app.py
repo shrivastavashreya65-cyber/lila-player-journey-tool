@@ -62,7 +62,6 @@ def load_data():
                 df = table.to_pandas()
 
                 df["date"] = folder
-
                 frames.append(df)
 
             except:
@@ -70,12 +69,12 @@ def load_data():
 
     df = pd.concat(frames, ignore_index=True)
 
-    # decode event
+    # decode events
     df["event"] = df["event"].apply(
         lambda x: x.decode("utf-8") if isinstance(x, bytes) else x
     )
 
-    # classify bots vs humans
+    # detect bots vs humans
     df["player_type"] = df["user_id"].apply(
         lambda x: "Bot" if str(x).isdigit() else "Human"
     )
@@ -113,27 +112,13 @@ match_id = st.sidebar.selectbox(
 )
 
 match_df = map_df[map_df["match_id"] == match_id].copy()
-
 match_df = match_df.sort_values("ts")
-
-# -----------------------------
-# VISUALIZATION TOGGLES
-# -----------------------------
-
-st.sidebar.header("Visualization Layers")
-
-show_paths = st.sidebar.checkbox("Player Paths", True)
-show_kills = st.sidebar.checkbox("Kills", True)
-show_deaths = st.sidebar.checkbox("Deaths", True)
-show_loot = st.sidebar.checkbox("Loot", True)
-show_storm = st.sidebar.checkbox("Storm Deaths", True)
 
 # -----------------------------
 # TIMELINE
 # -----------------------------
 
 match_df["ts_seconds"] = match_df["ts"].astype("int64") // 10**9
-
 start_time = match_df["ts_seconds"].min()
 
 match_df["match_time"] = match_df["ts_seconds"] - start_time
@@ -151,12 +136,10 @@ else:
         max_ts
     )
 
-timeline_df = match_df[
-    match_df["match_time"] <= time_selected
-]
+timeline_df = match_df[match_df["match_time"] <= time_selected]
 
 # -----------------------------
-# MAP COORDINATE CONVERSION
+# MAP CONVERSION
 # -----------------------------
 
 config = MAP_CONFIG[map_selected]
@@ -244,68 +227,76 @@ fig.add_layout_image(
     )
 )
 
-# PLAYER PATHS WITH BOT DIFFERENTIATION
+# -----------------------------
+# PLAYER PATHS (Human vs Bot)
+# -----------------------------
 
-if show_paths:
+human_shown = False
+bot_shown = False
 
-    for player, group in movement.groupby("user_id"):
+for player, group in movement.groupby("user_id"):
 
-        player_type = group["player_type"].iloc[0]
+    player_type = group["player_type"].iloc[0]
 
-        if player_type == "Human":
-            color = "blue"
-            width = 3
-        else:
-            color = "orange"
-            width = 1
+    if player_type == "Human":
+        color = "blue"
+        showlegend = not human_shown
+        human_shown = True
+    else:
+        color = "orange"
+        showlegend = not bot_shown
+        bot_shown = True
 
-        fig.add_trace(
-            go.Scatter(
-                x=group["px"],
-                y=group["py"],
-                mode="lines",
-                line=dict(color=color, width=width),
-                name=player_type
-            )
+    fig.add_trace(
+        go.Scatter(
+            x=group["px"],
+            y=group["py"],
+            mode="lines",
+            line=dict(color=color, width=2),
+            name=player_type,
+            showlegend=showlegend
         )
+    )
 
+# -----------------------------
 # EVENT MARKERS
+# -----------------------------
 
-if show_kills:
-    fig.add_trace(go.Scatter(
-        x=kills["px"],
-        y=kills["py"],
-        mode="markers",
-        marker=dict(size=10, color="red"),
-        name="Kills"
-    ))
+fig.add_trace(go.Scatter(
+    x=kills["px"],
+    y=kills["py"],
+    mode="markers",
+    marker=dict(size=10, color="red"),
+    name="Kills"
+))
 
-if show_deaths:
-    fig.add_trace(go.Scatter(
-        x=deaths["px"],
-        y=deaths["py"],
-        mode="markers",
-        marker=dict(size=10, color="black"),
-        name="Deaths"
-    ))
+fig.add_trace(go.Scatter(
+    x=deaths["px"],
+    y=deaths["py"],
+    mode="markers",
+    marker=dict(size=10, color="black"),
+    name="Deaths"
+))
 
-if show_storm:
-    fig.add_trace(go.Scatter(
-        x=storm["px"],
-        y=storm["py"],
-        mode="markers",
-        marker=dict(size=12, color="purple", symbol="triangle-up"),
-        name="Storm Deaths"
-    ))
+fig.add_trace(go.Scatter(
+    x=loot["px"],
+    y=loot["py"],
+    mode="markers",
+    marker=dict(size=6, color="yellow"),
+    name="Loot"
+))
 
-if show_loot:
-    fig.add_trace(go.Scatter(
-        x=loot["px"],
-        y=loot["py"],
-        mode="markers",
-        marker=dict(size=6, color="yellow"),
-        name="Loot"
-    ))
+fig.add_trace(go.Scatter(
+    x=storm["px"],
+    y=storm["py"],
+    mode="markers",
+    marker=dict(size=12, color="purple", symbol="triangle-up"),
+    name="Storm Deaths"
+))
+
+# -----------------------------
+# CLEAN MAP STYLE
+# -----------------------------
 
 fig.update_layout(
     width=900,
@@ -336,6 +327,7 @@ if len(kills) > 0:
 
 else:
     st.write("No kill events in this match.")
+
 
 st.subheader("Death Heatmap")
 
