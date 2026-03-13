@@ -111,5 +111,7 @@ event types
 timestamps
 
 
-Author
+**Author**
+
 Shreya Shrivastava
+
