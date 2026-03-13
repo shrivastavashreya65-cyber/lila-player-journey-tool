@@ -21,7 +21,7 @@ This stack allowed the entire tool to be implemented quickly while still providi
 
 The system processes data through four stages.
 
-1. Data Ingestion
+**1. Data Ingestion**
 
 Telemetry files are stored in parquet format and organized by date.
 
@@ -158,3 +158,4 @@ This architecture prioritizes:
 - rapid deployment
 
 The resulting system transforms raw telemetry into actionable insights that help Level Designers understand player behavior and improve map design.
+
