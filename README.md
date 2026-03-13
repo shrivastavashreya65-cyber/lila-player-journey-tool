@@ -39,22 +39,22 @@ It allows designers to understand:
 - Streamlit Cloud
 
 
-_**How to Run Locally**_
+__**How to Run Locally**__
 
-**Clone the repository:**
+_**Clone the repository:**_
 
 git clone <repo-url>
 cd lila-player-visualizer
 
-**Install dependencies:**
+_**Install dependencies:**_
 
 pip install -r requirements.txt
 
-**Run the app:**
+_**Run the app:**_
 
 streamlit run app.py
 
-**Open in browser:**
+_**Open in browser:**_
 
 http://localhost:8501
 
@@ -85,3 +85,4 @@ Data fields include:
 **Author**
 
 Shreya Shrivastava
+
