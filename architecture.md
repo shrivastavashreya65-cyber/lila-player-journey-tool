@@ -30,10 +30,15 @@ Each file represents one player’s journey within a match.
 The loader iterates through all folders:
 
 player_data/
+  
   February_10/
+  
   February_11/
+  
   February_12/
+ 
   February_13/
+  
   February_14/
 
 Each file is read using PyArrow, converted to Pandas DataFrames, and concatenated into a unified dataset.
@@ -42,11 +47,11 @@ Each file is read using PyArrow, converted to Pandas DataFrames, and concatenate
 
 Several transformations are applied during preprocessing.
 
-Event decoding
+**Event decoding**
 
 The event column is stored as binary and decoded into readable event names.
 
-Bot vs Human classification
+**Bot vs Human classification**
 
 Bots are identified by numeric user IDs while humans use UUIDs.
 
@@ -55,9 +60,10 @@ Human → UUID
 
 This classification enables visual differentiation in the map.
 
-Match timeline construction
+**Match timeline construction**
 
 Timestamps are normalized so match events can be replayed using a timeline slider.
+
 
 **3. Coordinate Mapping**
 
@@ -83,13 +89,13 @@ This step is critical for ensuring player paths align correctly with the minimap
 
 The final stage renders multiple visualization layers on top of the map:
 
-Player paths
+**Player paths**
 
 - Humans shown in blue
 
 - Bots shown in orange
 
-Event markers
+**Event markers**
 
 - Kill events
 
@@ -99,7 +105,7 @@ Event markers
 
 - Storm deaths
 
-Heatmaps
+**Heatmaps**
 
 - Kill density
 
@@ -107,8 +113,8 @@ Heatmaps
 
 - Player movement density
 
-Timeline replay
-A slider allows designers to replay match progression chronologically.
+**Timeline replay**
+- A slider allows designers to replay match progression chronologically.
 
 **System Design Choices**
 
@@ -158,4 +164,5 @@ This architecture prioritizes:
 - rapid deployment
 
 The resulting system transforms raw telemetry into actionable insights that help Level Designers understand player behavior and improve map design.
+
 
