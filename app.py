@@ -69,12 +69,10 @@ def load_data():
 
     df = pd.concat(frames, ignore_index=True)
 
-    # decode events
     df["event"] = df["event"].apply(
         lambda x: x.decode("utf-8") if isinstance(x, bytes) else x
     )
 
-    # detect bots vs humans
     df["player_type"] = df["user_id"].apply(
         lambda x: "Bot" if str(x).isdigit() else "Human"
     )
@@ -84,7 +82,7 @@ def load_data():
 
 df = load_data()
 
-st.success(f"Loaded {len(df)} rows")
+st.success(f"Loaded {len(df)} telemetry rows")
 
 # -----------------------------
 # SIDEBAR FILTERS
@@ -112,6 +110,7 @@ match_id = st.sidebar.selectbox(
 )
 
 match_df = map_df[map_df["match_id"] == match_id].copy()
+
 match_df = match_df.sort_values("ts")
 
 # -----------------------------
@@ -126,20 +125,27 @@ match_df["match_time"] = match_df["ts_seconds"] - start_time
 min_ts = int(match_df["match_time"].min())
 max_ts = int(match_df["match_time"].max())
 
-if min_ts == max_ts:
-    time_selected = max_ts
-else:
+if max_ts > min_ts:
+
     time_selected = st.slider(
-        "Match Time (seconds)",
+        "Match Timeline (seconds)",
         min_ts,
         max_ts,
         max_ts
     )
 
-timeline_df = match_df[match_df["match_time"] <= time_selected]
+else:
+
+    st.info("Match timeline too short — showing full match.")
+
+    time_selected = max_ts
+
+timeline_df = match_df[
+    match_df["match_time"] <= time_selected
+]
 
 # -----------------------------
-# MAP CONVERSION
+# MAP COORDINATE CONVERSION
 # -----------------------------
 
 config = MAP_CONFIG[map_selected]
@@ -227,10 +233,6 @@ fig.add_layout_image(
     )
 )
 
-# -----------------------------
-# PLAYER PATHS (Human vs Bot)
-# -----------------------------
-
 human_shown = False
 bot_shown = False
 
@@ -258,9 +260,7 @@ for player, group in movement.groupby("user_id"):
         )
     )
 
-# -----------------------------
-# EVENT MARKERS
-# -----------------------------
+# Event markers
 
 fig.add_trace(go.Scatter(
     x=kills["px"],
@@ -294,10 +294,6 @@ fig.add_trace(go.Scatter(
     name="Storm Deaths"
 ))
 
-# -----------------------------
-# CLEAN MAP STYLE
-# -----------------------------
-
 fig.update_layout(
     width=900,
     height=900,
@@ -327,7 +323,6 @@ if len(kills) > 0:
 
 else:
     st.write("No kill events in this match.")
-
 
 st.subheader("Death Heatmap")
 
