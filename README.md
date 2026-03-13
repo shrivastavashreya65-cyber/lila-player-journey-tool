@@ -181,19 +181,33 @@ The tool will open in your browser.
 
 
 .
+
 ├── app.py
+
 ├── requirements.txt
+
 ├── README.md
+
 ├── ARCHITECTURE.md
+
 ├── INSIGHTS.md
+
 ├── .gitignore
+
 │
 └── player_data
+
 ├── February_10
+
+
 ├── February_11
+
 ├── February_12
+
 ├── February_13
+
 ├── February_14
+
 └── minimaps
 
 
@@ -240,11 +254,12 @@ This project transforms raw gameplay telemetry into an interactive visualization
 - analyze map engagement
 - improve level design decisions
 
-The tool demonstrates how data visualization can support **better gameplay
+The tool demonstrates how data visualization can support better gameplay
 
 
 **Author**
 
 Shreya Shrivastava
+
 
 
