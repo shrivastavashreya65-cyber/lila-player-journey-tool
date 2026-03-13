@@ -1,36 +1,71 @@
-**Architecture Overview**
+**Overview**
 
-**Tech                     &            Stack**
+The Player Journey Visualization Tool converts raw gameplay telemetry into an interactive browser-based visualization that allows Level Designers to analyze how players navigate maps, where combat occurs, and which areas of the map receive the most activity.
 
-Layer	                     -            Technology
+The system ingests parquet telemetry files, processes them into a unified dataset, maps world coordinates to minimap coordinates, and renders interactive visualizations directly on top of map images.
 
-Frontend	                -             Streamlit
+The primary goal of the architecture was to optimize for rapid iteration, clarity of visualization, and ease of deployment.
 
-Data Processing	          -             Pandas + PyArrow
+**Tech Stack**
+| Layer | Technology | Reason |
+|------|-------------|------|
+| Frontend + UI | Streamlit | Fast development and easy deployment |
+| Data Processing | Pandas + PyArrow | Efficient handling of parquet telemetry |
+| Visualization | Plotly | Interactive charts and map overlays |
+| Image Handling | Pillow | Load and render minimap images |
+| Deployment | Streamlit Cloud | Simple hosting with GitHub integration |
 
-Visualization	             -            Plotly
+This stack allowed the entire tool to be implemented quickly while still providing interactive visual exploration.
 
-Deployment	                -           Streamlit Cloud
+**Data Flow**
 
+The system processes data through four stages.
 
-**Data Pipeline**
+1. Data Ingestion
 
-Parquet telemetry files are loaded using PyArrow.
+Telemetry files are stored in parquet format and organized by date.
 
-Files are converted into Pandas DataFrames.
+Each file represents one player’s journey within a match.
 
-Event bytes are decoded into readable event names.
+The loader iterates through all folders:
 
-Data is filtered based on user selection (date, map, match).
+player_data/
+  February_10/
+  February_11/
+  February_12/
+  February_13/
+  February_14/
 
-Coordinates are converted from world space to minimap coordinates.
+Each file is read using PyArrow, converted to Pandas DataFrames, and concatenated into a unified dataset.
 
-Visualizations are rendered using Plotly and displayed through Streamlit.
+**2. Data Preprocessing**
 
+Several transformations are applied during preprocessing.
 
-**Coordinate Mapping**
+Event decoding
 
-Game coordinates are mapped to minimap pixels using the following formula:
+The event column is stored as binary and decoded into readable event names.
+
+Bot vs Human classification
+
+Bots are identified by numeric user IDs while humans use UUIDs.
+
+Bot → numeric ID
+Human → UUID
+
+This classification enables visual differentiation in the map.
+
+Match timeline construction
+
+Timestamps are normalized so match events can be replayed using a timeline slider.
+
+**3. Coordinate Mapping**
+
+Gameplay telemetry records world coordinates, but the visualization requires 2D minimap coordinates.
+
+Each map has a different scale and origin.
+
+The conversion formula:
 
 u = (x - origin_x) / scale
 v = (z - origin_z) / scale
@@ -38,46 +73,88 @@ v = (z - origin_z) / scale
 pixel_x = u * 1024
 pixel_y = (1 - v) * 1024
 
-Each map has unique scale and origin values which align the world coordinates with the minimap image.
+This maps 3D game coordinates to the 2D minimap image space.
 
+The Y-axis is flipped because image coordinate systems start at the top-left corner.
 
-**Visualization Layers**
+This step is critical for ensuring player paths align correctly with the minimap.
 
-The tool renders multiple layers on top of the minimap:
+**4. Visualization Layer**
 
-Player movement paths
+The final stage renders multiple visualization layers on top of the map:
 
-Kill events
+Player paths
 
-Death events
+- Humans shown in blue
 
-Loot pickups
+- Bots shown in orange
 
-Storm deaths
+Event markers
 
-Designers can toggle these layers to focus on specific gameplay patterns.
+- Kill events
 
+- Death events
+
+- Loot pickups
+
+- Storm deaths
+
+Heatmaps
+
+- Kill density
+
+- Death density
+
+- Player movement density
+
+Timeline replay
+A slider allows designers to replay match progression chronologically.
+
+**System Design Choices**
+
+Several design decisions were made to balance performance and simplicity.
+
+**Decision	Reason**
+Streamlit instead of React	Faster prototyping and simpler deployment
+Pandas in-memory processing	Dataset small enough (~89k rows)
+Plotly visualization	Rich interactive plotting capabilities
+Local dataset loading	Simplifies architecture for prototype
+
+This approach minimizes infrastructure complexity while enabling fast iteration.
 
 **Tradeoffs**
+| Tradeoff | Explanation |
+|----------|-------------|
+| In-memory processing | Works for current dataset size (~89k rows) |
+| Single-node architecture | Simplifies deployment but limits scalability |
+| Streamlit UI flexibility | Less customizable than a full frontend framework |
 
-**Decision                &                Reason**
-
-Streamlit instead of React - Faster development and deployment
-
-Plotly for visualization	      -          Interactive and easy integration
-
-Local parquet processing	        -        Dataset size small enough
-
+These tradeoffs were acceptable for a prototype tool focused on visualization and exploration.
 
 **Future Improvements**
 
-Match replay animation
+With additional development time, the system could be extended to support:
 
-Multi-player match reconstruction
+**Match replay animation**
+Animated playback of player movement over time.
 
-Map area usage analytics
+**Multi-player match reconstruction**
+Visualizing entire matches with all players simultaneously.
 
-Storm path visualization
+**Map usage analytics**
+Automatically identifying underutilized regions of the map.
 
+**Storm progression visualization**
+Overlay storm movement to analyze rotation behavior.
 
+**Summary**
 
+This architecture prioritizes:
+
+- simplicity
+
+- interactive exploration
+
+- rapid deployment
+
+The resulting system transforms raw telemetry into actionable insights that help Level Designers understand player behavior and improve map design.
