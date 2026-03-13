@@ -39,7 +39,7 @@ Level designers could experiment with:
 - Redistributing loot spawn locations slightly away from these intersections
 
 - Introducing cover or terrain variation to diversify combat dynamics
-- 
+  
 
 _**Metrics Impacted**_
 
@@ -142,6 +142,7 @@ _**Metrics Impacted**_
 - Average match survival duration
 
 - Player frustration indicators (rage quits, early exits)
+
 
 
 
